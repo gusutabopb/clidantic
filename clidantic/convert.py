@@ -21,7 +21,7 @@ class PydanticOption(click.Option):
         return super().handle_parse_result(context, options, args)
 
     @classmethod
-    def from_field(cls, field: ModelField, params: Tuple[str, str]):
+    def from_field(cls, field: ModelField, params: Tuple[str, ...]):
         assert not lenient_issubclass(field.outer_type_, BaseModel)
         click_type = parse_type(field.outer_type_)
         default_value = parse_default(field.default, field.outer_type_)
@@ -57,7 +57,7 @@ def allow_if_specified(context: click.Context, param: click.Parameter, value: An
 
 def param_from_field(
     field: ModelField, kebab_name: str, delimiter: str, internal_delimiter: str, parent_path: Tuple[str, ...]
-) -> Tuple[str, str]:
+) -> Tuple[str, ...]:
     """Generates an equivalent click CLI parameter from the given pydantic field.
 
     Args:
@@ -73,13 +73,14 @@ def param_from_field(
     # example.test-attribute
     base_option_name = delimiter.join(parent_path + (kebab_name,))
     full_option_name = f"--{base_option_name}"
+    extra_names = field.field_info.extra.get("cli", {}).get("names", ())
     # Early out of non-boolean fields
     if field.outer_type_ is bool:
         full_disable_flag = delimiter.join(parent_path + (f"no-{kebab_name}",))
         full_option_name += f"/--{full_disable_flag}"
     # example.test-attribute -> example__test_attribute
     identifier = base_option_name.replace(delimiter, internal_delimiter).replace("-", "_")
-    return identifier, full_option_name
+    return identifier, full_option_name, *extra_names
 
 
 def settings_to_options(
